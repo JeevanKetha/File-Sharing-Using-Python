@@ -1,0 +1,53 @@
+import http.server
+import socketserver
+import webbrowser
+import pyqrcode
+from pyqrcode import QRCode
+import png
+import os
+import threading
+import tkinter as tk
+
+# Define PORT variable
+PORT = 8010
+
+# Tkinter window settings
+root = tk.Tk()
+root.title("File Sharing App")
+root.geometry("400x200")
+
+# Function to generate QR code
+def generate_qr_code():
+    url = f"http://192.168.174.57:{PORT}"  # Use specific IP address
+    qr_code = pyqrcode.create(url)
+    qr_code.svg("qr_code.svg", scale=8)
+    webbrowser.open("qr_code.svg")
+
+# Function to start server in a separate thread
+def start_server():
+    global server
+    server_address = ("", PORT)
+    server = socketserver.TCPServer(server_address, MyHandler)
+    server.serve_forever()
+
+# Custom HTTP request handler
+class MyHandler(http.server.SimpleHTTPRequestHandler):
+    def do_GET(self):
+        if self.path == "/":
+            # Serve index.html file
+            path = os.path.join(os.getcwd(), "index.html")
+            if os.path.exists(path):
+                with open(path, "rb") as f:
+                    self.send_response(200)
+                    self.send_header("Content-type", "text/html")
+                    self.end_headers()
+                    self.wfile.write(f.read())
+            else:
+                self.send_error(404, "File not found")
+        else:
+            # Serve files from the desktop directory
+            path = os.path.join(os.path.expanduser('~'), 'Desktop', self.path)
+            if os.path.exists(path):
+                super().do_GET()
+            else:
+                self.send_error(404, "File not found")
